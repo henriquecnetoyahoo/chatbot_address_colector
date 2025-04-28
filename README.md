@@ -1,19 +1,23 @@
 # 💬 Chatbot template
 
-A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
+A simple AI web scraper using Ollama, LangChain, and Streamlit by building a RAG(Retrieval-Augmented Generation) system to chat with websites and answer complex questions about the content.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chatbot-template.streamlit.app/)
+# Pre-requisites
+Install Ollama on your local machine from the [official website](https://ollama.com/). And then pull the llama model:
 
-### How to run it on your own machine
+```bash
+ollama pull llama3.2
+```
 
-1. Install the requirements
+Install the dependencies using pip:
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-2. Run the app
+# Run
+Run the Streamlit app:
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+```bash
+streamlit run streamlit_app.py
+```

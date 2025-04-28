@@ -1,56 +1,74 @@
 import streamlit as st
-from openai import OpenAI
+
+from langchain_community.document_loaders import SeleniumURLLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_ollama import OllamaEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama.llms import OllamaLLM
+
 
 # Show title and description.
 st.title("💬 Chatbot")
 st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+    "This is a simple chatbot that aims to collect Referral's address by Natural Language approach. "
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+template = """
+You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If 
+you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+Question: {question} 
+Context: {context} 
+Answer:
+"""
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+embeddings = OllamaEmbeddings(model="llama3.2")
+vector_store = InMemoryVectorStore(embeddings)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+model = OllamaLLM(model="llama3.2")
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+def load_page(url):
+    loader = SeleniumURLLoader(
+        urls=[url]
+    )
+    documents = loader.load()
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+    return documents
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+def split_text(documents):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        add_start_index=True
+    )
+    data = text_splitter.split_documents(documents)
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
+    return data
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+def index_docs(documents):
+    vector_store.add_documents(documents)
+
+def retrieve_docs(query):
+    return vector_store.similarity_search(query)
+
+def answer_question(question, context):
+    prompt = ChatPromptTemplate.from_template(template)
+    chain = prompt | model
+    return chain.invoke({"question": question, "context": context})
+
+st.title("AI Crawler")
+url = st.text_input("Enter URL:")
+
+documents = load_page(url)
+chunked_documents = split_text(documents)
+
+index_docs(chunked_documents)
+
+question = st.chat_input()
+
+if question:
+    st.chat_message("user").write(question)
+    retrieve_documents = retrieve_docs(question)
+    context = "\n\n".join([doc.page_content for doc in retrieve_documents])
+    answer = answer_question(question, context)
+    st.chat_message("assistant").write(answer)
