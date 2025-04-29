@@ -69,7 +69,7 @@ def query_ollama(prompt, system_prompt=""):
 # Function to parse Brazilian address using Ollama
 def parse_address(address_text):
     system_prompt = """
-    You are an assistant to collect properties addresses from brazilian users. The properties to be collect will be houses 
+    You are an assistant to collect properties addresses from brazilian users. The properties to be collect should be houses 
 or apartments in Brazil. Extract the following data: 
     - logradouro (street, avenue, etc.)
     - number
@@ -77,18 +77,8 @@ or apartments in Brazil. Extract the following data:
     - city
     - complement (if exists and only for apartments)
     - CEP (zip code)
-    - property_type (house or apartment)
-
-    Example, in this address "av. dr. altino arantes, 865, vila clementino, sao paulo, apto 174 bloco B, 04042-034", 
-    logradouro is "av. dr. altino arantes", number is "865", neighborhood is "vila clementino", 
-    city is "sao paulo", complement is "apto 174 bloco B" and zip code is "04042-034".
     
-    Carry on the user to provide the property full address in portugues. After that, ask for two more infos:
-     - owner_name (name of house or apartment owner)
-     - owner_phone (cell phone of the owner)
-
-    Finally, return the JSON object containing such informations. 
-    Be concise to get all data from user.
+    Return the JSON object containing such informations without any explanation.
     """
     
     prompt = f"Parse this Brazilian address and extract the components:: {address_text}"
@@ -140,7 +130,7 @@ def process_input(user_input):
         # Try to parse the full address using Ollama
         address_components = parse_address(user_input)
         
-        if address_components and all(k in address_components for k in ["logradouro", "number", "neighborhood", "city", "cep", "property_type", "owner_name", "owner_phone"]):
+        if address_components and all(k in address_components for k in ["logradouro", "number", "neighborhood", "city", "cep"]):
             # Successfully parsed the address
             st.session_state.property_info["logradouro"] = address_components.get("logradouro", "")
             st.session_state.property_info["number"] = address_components.get("number", "")
@@ -148,9 +138,6 @@ def process_input(user_input):
             st.session_state.property_info["city"] = address_components.get("city", "")
             st.session_state.property_info["complement"] = address_components.get("complement", "")
             st.session_state.property_info["zip_code"] = address_components.get("cep", "")
-            st.session_state.property_info["property_type"] = address_components.get("property_type", "")
-            st.session_state.property_info["owner_name"] = address_components.get("owner_name", "")
-            st.session_state.property_info["owner_phone"] = address_components.get("owner_phone", "")
             
             # Move to next stage
             st.session_state.current_stage = "confirm_address"
@@ -166,9 +153,6 @@ def process_input(user_input):
             Cidade: {info['city']}
             Complemento: {info['complement'] if info['complement'] else 'Não informado'}
             CEP: {info['zip_code']}
-            property_type: {info['property_type']}
-            owner_name: {info['owner_name']}
-            owner_phone: {info['owner_phone']}
             
             Estas informações estão corretas? Responda 'sim' para continuar ou 'não' para corrigir.
             """
@@ -189,32 +173,32 @@ def process_input(user_input):
     elif st.session_state.current_stage == "logradouro":
         st.session_state.property_info["logradouro"] = user_input
         st.session_state.current_stage = "number"
-        return "Por favor, informe o número do imóvel:"
+        return "Informe o número do imóvel:"
     
     elif st.session_state.current_stage == "number":
         st.session_state.property_info["number"] = user_input
         st.session_state.current_stage = "neighborhood"
-        return "Por favor, informe o bairro:"
+        return "Informe o bairro:"
     
     elif st.session_state.current_stage == "neighborhood":
         st.session_state.property_info["neighborhood"] = user_input
         st.session_state.current_stage = "city"
-        return "Por favor, informe a cidade:"
+        return "Informe a cidade:"
     
     elif st.session_state.current_stage == "city":
         st.session_state.property_info["city"] = user_input
         st.session_state.current_stage = "complement"
-        return "Por favor, informe o complemento (como 'apto 174 bloco B') ou digite 'nenhum' se for uma casa:"
+        return "Informe o complemento (exemplo 'apto 174 bloco B') ou digite 'nenhum' se for uma casa:"
     
     elif st.session_state.current_stage == "complement":
         st.session_state.property_info["complement"] = "" if user_input.lower() in ["nenhum", "none", "não", "nao"] else user_input
         st.session_state.current_stage = "zip_code"
-        return "Por favor, informe o CEP:"
+        return "Agora informe o CEP:"
     
     elif st.session_state.current_stage == "zip_code":
         st.session_state.property_info["zip_code"] = user_input
         st.session_state.current_stage = "owner_name"
-        return "Agora, por favor, informe o nome do proprietário:"
+        return "Informe o nome do proprietário:"
     
     elif st.session_state.current_stage == "owner_name":
         st.session_state.property_info["owner_name"] = user_input
