@@ -17,7 +17,6 @@ st.write(
 # Initialize session state to store chat history and collected information
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Add an initial message from the assistant
     st.session_state.messages.append({
         "role": "assistant", 
         "content": "Olá! Sou um assistente para coletar informações de propriedades no Brasil. "
@@ -39,7 +38,6 @@ if "property_info" not in st.session_state:
 if "current_stage" not in st.session_state:
     st.session_state.current_stage = "address"
 
-# Function to interact with Ollama via LangChain
 def query_ollama(prompt, system_prompt=""):
     try:
         # Initialize the Ollama model using LangChain
